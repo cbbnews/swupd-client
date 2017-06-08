@@ -51,6 +51,7 @@ static const struct option prog_opts[] = {
 	{ "statedir", required_argument, 0, 'S' },
 	{ "certpath", required_argument, 0, 'C' },
 	{ "time", no_argument, 0, 't' },
+	{ "migrate", no_argument, 0, 'm' },
 	{ 0, 0, 0, 0 }
 };
 
@@ -78,6 +79,7 @@ static void print_help(const char *name)
 	fprintf(stderr, "   -S, --statedir          Specify alternate swupd state directory\n");
 	fprintf(stderr, "   -C, --certpath          Specify alternate path to swupd certificates\n");
 	fprintf(stderr, "   -t, --time         	   Show verbose time output for swupd operations\n");
+	fprintf(stderr, "   -m, --migrate           Migrate system from official upstream to mixed mode\n");
 	fprintf(stderr, "\n");
 }
 
@@ -85,7 +87,7 @@ static bool parse_options(int argc, char **argv)
 {
 	int opt;
 
-	while ((opt = getopt_long(argc, argv, "hxnIdtu:P:c:v:sF:p:S:C:", prog_opts, NULL)) != -1) {
+	while ((opt = getopt_long(argc, argv, "hxmnIdtu:P:c:v:sF:p:S:C:", prog_opts, NULL)) != -1) {
 		switch (opt) {
 		case '?':
 		case 'h':
@@ -148,6 +150,10 @@ static bool parse_options(int argc, char **argv)
 			break;
 		case 'x':
 			force = true;
+			break;
+		case 'm':
+			migrate = true;
+			fprintf(stderr, "Attempting to migrate to your mix content...\n\n");
 			break;
 		case 'n':
 			sigcheck = false;

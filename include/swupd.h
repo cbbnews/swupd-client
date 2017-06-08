@@ -37,6 +37,7 @@ extern "C" {
 #define SWUPD_HASH_DIRNAME "DIRECTORY"
 #define MIX_DIR "/usr/share/mix/"
 #define MIX_STATE_DIR MIX_DIR "update/www/"
+#define MIX_CERT MIX_DIR "Swupd_Root.pem"
 #define MIX_BUNDLES_DIR MIX_STATE_DIR "mix-bundles/"
 
 struct sub {
@@ -74,6 +75,7 @@ struct header;
 
 extern bool verbose_time;
 extern bool force;
+extern bool migrate;
 extern bool sigcheck;
 extern bool timecheck;
 extern int verbose;
@@ -295,7 +297,7 @@ extern CURLcode swupd_curl_set_basic_options(CURL *curl, const char *url);
 void swupd_curl_test_resume(void);
 
 extern void free_subscriptions(struct list **subs);
-extern void read_subscriptions_alt(struct list **subs, bool is_mix);
+extern void read_subscriptions(struct list **subs);
 extern int component_subscribed(struct list *subs, char *component);
 extern void set_subscription_versions(struct manifest *latest, struct manifest *current, struct list **subs);
 
@@ -378,8 +380,10 @@ extern void print_manifest_array(struct file **array, int filecount);
 extern int enforce_compliant_manifest(struct file **a, struct file **b, int searchsize, int size);
 extern void free_manifest_array(struct file **array);
 
+extern bool system_on_mix(void);
 extern bool check_mix_exists(void);
 extern int check_mix_versions(int *current_version, int *server_version, char *path_prefix);
+extern int read_mix_version_file(char *filename, char *path_prefix);
 
 /* some disk sizes constants for the various features:
  *   ...consider adding build automation to catch at build time

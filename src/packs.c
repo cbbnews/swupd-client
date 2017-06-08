@@ -54,8 +54,13 @@ static int download_pack(int oldversion, int newversion, char *module, int is_mi
 
 	if (is_mix) {
 		string_or_die(&url, "%s/%i/pack-%s-from-%i.tar", MIX_STATE_DIR, newversion, module, oldversion);
-		link(url, filename);
+		err = link(url, filename);
 		printf("Linked %s to %s\n", url, filename);
+		if (err) {
+			free(filename);
+			free(url);
+			return err;
+		}
 		free(url);
 	} else {
 		string_or_die(&url, "%s/%i/pack-%s-from-%i.tar", content_url, newversion, module, oldversion);
@@ -104,6 +109,7 @@ int download_subscribed_packs(struct list *subs, struct manifest *mom, bool requ
 	struct list *iter;
 	struct sub *sub = NULL;
 	int err;
+	int is_mix = 0;
 
 	if (!check_network()) {
 		return -ENOSWUPDSERVER;
@@ -118,8 +124,11 @@ int download_subscribed_packs(struct list *subs, struct manifest *mom, bool requ
 		if (sub->oldversion == sub->version) { // pack didn't change in this release
 			continue;
 		}
-		printf("Getting pack %s %d \n", sub->component, sub->version);
-		int is_mix = search_bundle_in_manifest(mom, sub->component)->is_mix;
+
+		struct file *bundle = search_bundle_in_manifest(mom, sub->component);
+		if (bundle) {
+			is_mix = bundle->is_mix;
+		}
 		err = download_pack(sub->oldversion, sub->version, sub->component, is_mix);
 		if (err < 0) {
 			if (required) {

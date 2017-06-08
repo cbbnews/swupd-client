@@ -220,6 +220,7 @@ int remove_bundle(const char *bundle_name)
 	int current_version = CURRENT_OS_VERSION;
 	struct manifest *current_mom, *bundle_manifest = NULL;
 	struct list *subs = NULL;
+	bool mix_exists;
 
 	ret = swupd_init(&lock_fd);
 	if (ret != 0) {
@@ -250,9 +251,11 @@ int remove_bundle(const char *bundle_name)
 		goto out_free_curl;
 	}
 
+	mix_exists = check_mix_exists();
+
 	swupd_curl_set_current_version(current_version);
 
-	current_mom = load_mom(current_version, false, false);
+	current_mom = load_mom(current_version, false, mix_exists);
 	if (!current_mom) {
 		fprintf(stderr, "Unable to download/verify %d Manifest.MoM\n", current_version);
 		ret = EMOM_NOTFOUND;
@@ -266,7 +269,7 @@ int remove_bundle(const char *bundle_name)
 	}
 
 	/* load all tracked bundles into memory */
-	read_subscriptions_alt(&subs, false);
+	read_subscriptions(&subs);
 	/* now popout the one to be removed */
 	ret = unload_tracked_bundle(bundle_name, &subs);
 	if (ret != 0) {
@@ -378,7 +381,6 @@ int add_subscriptions(struct list *bundles, struct list **subs, int current_vers
 		}
 
 	retry_manifest_download:
-		printf("add_subscriptions: load_manifest(): %s %d\n", file->filename, file->is_mix);
 		manifest = load_manifest(current_version, file->last_change, file, mom, true);
 		if (!manifest) {
 			if (retries < MAX_TRIES) {
@@ -481,7 +483,7 @@ download_subscribed_packs:
 
 	/* step 3: Add tracked bundles */
 	grabtime_start(&times, "Add tracked bundles");
-	read_subscriptions_alt(subs, false);
+	read_subscriptions(subs);
 	set_subscription_versions(mom, NULL, subs);
 	mom->submanifests = recurse_manifest(mom, *subs, NULL);
 	if (!mom->submanifests) {
@@ -565,6 +567,7 @@ int install_bundles_frontend(char **bundles)
 	struct list *subs = NULL;
 	char *bundles_list_str = NULL;
 	timelist times;
+	bool mix_exists;
 
 	/* initialize swupd and get current version from OS */
 	ret = swupd_init(&lock_fd);
@@ -580,9 +583,11 @@ int install_bundles_frontend(char **bundles)
 		goto clean_and_exit;
 	}
 
+	mix_exists = check_mix_exists();
+
 	swupd_curl_set_current_version(current_version);
 
-	mom = load_mom(current_version, false, false);
+	mom = load_mom(current_version, false, mix_exists);
 	if (!mom) {
 		fprintf(stderr, "Cannot load official manifest MoM for version %i\n", current_version);
 		ret = EMOM_NOTFOUND;
@@ -657,4 +662,3 @@ void read_local_bundles(struct list **list_bundles)
 
 	free(path);
 }
-                             

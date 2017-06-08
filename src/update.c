@@ -275,12 +275,6 @@ static void run_postupdate_action(void)
 	free(post_update_action);
 }
 
-static bool system_on_mix(void)
-{
-	bool ret = (access("/usr/share/defaults/swupd/mixed", R_OK) != 0);
-	return ret;
-}
-
 static bool need_new_upstream(int server)
 {
 	if (!access(MIX_DIR ".clearversion", R_OK)) {
@@ -335,7 +329,7 @@ int main_update()
 
 	grabtime_start(&times, "Update Step 1: get versions");
 
-	read_subscriptions_alt(&current_subs, mix_exists);
+	read_subscriptions(&current_subs);
 
 /* Step 1: get versions */
 version_check:
@@ -369,7 +363,7 @@ version_check:
 				fclose(verfile);
 			}
 
-			if (system("/usr/bin/add-pkg.sh") != 0) {
+			if (system("/usr/bin/add-pkg.sh regenerate") != 0) {
 				fprintf(stderr, "ERROR: Could not execute add-pkg.sh\n");
 				ret = EXIT_FAILURE;
 				goto clean_curl;

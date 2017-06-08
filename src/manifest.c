@@ -674,17 +674,10 @@ struct manifest *load_mom(int version, bool latest, bool mix_exists)
 {
 	struct manifest *manifest = NULL;
 	int ret = 0;
-	char *basedir;
 	char *filename;
 	char *url;
 	char *log_cmd = NULL;
 	bool retried = false;
-
-	if (mix_exists) {
-		basedir = MIX_STATE_DIR;
-	} else {
-		basedir = state_dir;
-	}
 
 verify_mom:
 	ret = retrieve_manifests(version, version, "MoM", NULL, mix_exists);
@@ -707,7 +700,9 @@ verify_mom:
 
 	string_or_die(&filename, "%s/%i/Manifest.MoM", state_dir, version);
 	string_or_die(&url, "%s/%i/Manifest.MoM", content_url, version);
-	if (!download_and_verify_signature(url, filename, version, mix_exists)) {
+	/* Only when migrating , ignore the locally made signature check which is guaranteed to have been signed
+	 * by the user and does not come from any network source */
+	if (!(migrate && mix_exists) && !download_and_verify_signature(url, filename, version, mix_exists)) {
 		if (sigcheck) {
 			/* cleanup and try one more time, statedir could have got corrupt/stale */
 			if (retried == false && !mix_exists) {
@@ -728,14 +723,11 @@ verify_mom:
 			free(log_cmd);
 		}
 	}
-	printf("MOM IS GOODDDD\n");
 	free(filename);
 	free(url);
-	printf("manifest is %s\n", manifest->component);
 	return manifest;
 
 out:
-	printf("why\n");
 	return NULL;
 }
 
