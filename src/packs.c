@@ -35,7 +35,7 @@
 #include "swupd-build-variant.h"
 #include "swupd.h"
 
-static int download_pack(int oldversion, int newversion, char *module)
+static int download_pack(int oldversion, int newversion, char *module, int is_mix)
 {
 	FILE *tarfile = NULL;
 	char *tar = NULL;
@@ -52,19 +52,26 @@ static int download_pack(int oldversion, int newversion, char *module)
 		return 0;
 	}
 
-	string_or_die(&url, "%s/%i/pack-%s-from-%i.tar", content_url, newversion, module, oldversion);
-
-	err = swupd_curl_get_file(url, filename, NULL, NULL, true);
-	if (err) {
+	if (is_mix) {
+		string_or_die(&url, "%s/%i/pack-%s-from-%i.tar", MIX_STATE_DIR, newversion, module, oldversion);
+		link(url, filename);
+		printf("Linked %s to %s\n", url, filename);
 		free(url);
-		if ((lstat(filename, &stat) == 0) && (stat.st_size == 0)) {
-			unlink(filename);
-		}
-		free(filename);
-		return err;
-	}
+	} else {
+		string_or_die(&url, "%s/%i/pack-%s-from-%i.tar", content_url, newversion, module, oldversion);
 
-	free(url);
+		err = swupd_curl_get_file(url, filename, NULL, NULL, true);
+		if (err) {
+			free(url);
+			if ((lstat(filename, &stat) == 0) && (stat.st_size == 0)) {
+				unlink(filename);
+			}
+			free(filename);
+			return err;
+		}
+
+		free(url);
+	}
 
 	fprintf(stderr, "Extracting %s pack for version %i\n", module, newversion);
 	string_or_die(&tar, TAR_COMMAND " -C %s " TAR_PERM_ATTR_ARGS " -xf %s/pack-%s-from-%i-to-%i.tar 2> /dev/null",
@@ -92,7 +99,7 @@ static int download_pack(int oldversion, int newversion, char *module)
 }
 
 /* pull in packs for base and any subscription */
-int download_subscribed_packs(struct list *subs, bool required)
+int download_subscribed_packs(struct list *subs, struct manifest *mom, bool required)
 {
 	struct list *iter;
 	struct sub *sub = NULL;
@@ -111,8 +118,9 @@ int download_subscribed_packs(struct list *subs, bool required)
 		if (sub->oldversion == sub->version) { // pack didn't change in this release
 			continue;
 		}
-
-		err = download_pack(sub->oldversion, sub->version, sub->component);
+		printf("Getting pack %s %d \n", sub->component, sub->version);
+		int is_mix = search_bundle_in_manifest(mom, sub->component)->is_mix;
+		err = download_pack(sub->oldversion, sub->version, sub->component, is_mix);
 		if (err < 0) {
 			if (required) {
 				return err;

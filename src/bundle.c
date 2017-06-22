@@ -70,7 +70,7 @@ int list_installable_bundles()
 
 	swupd_curl_set_current_version(current_version);
 
-	MoM = load_mom(current_version, false);
+	MoM = load_mom(current_version, false, false);
 	if (!MoM) {
 		v_lockfile(lock_fd);
 		return EMOM_NOTFOUND;
@@ -104,7 +104,7 @@ static int load_bundle_manifest(const char *bundle_name, struct list *subs, int 
 	*submanifest = NULL;
 
 	swupd_curl_set_current_version(version);
-	mom = load_mom(version, false);
+	mom = load_mom(version, false, false);
 	if (!mom) {
 		return EMOM_NOTFOUND;
 	}
@@ -252,7 +252,7 @@ int remove_bundle(const char *bundle_name)
 
 	swupd_curl_set_current_version(current_version);
 
-	current_mom = load_mom(current_version, false);
+	current_mom = load_mom(current_version, false, false);
 	if (!current_mom) {
 		fprintf(stderr, "Unable to download/verify %d Manifest.MoM\n", current_version);
 		ret = EMOM_NOTFOUND;
@@ -266,7 +266,7 @@ int remove_bundle(const char *bundle_name)
 	}
 
 	/* load all tracked bundles into memory */
-	read_subscriptions_alt(&subs);
+	read_subscriptions_alt(&subs, false);
 	/* now popout the one to be removed */
 	ret = unload_tracked_bundle(bundle_name, &subs);
 	if (ret != 0) {
@@ -378,6 +378,7 @@ int add_subscriptions(struct list *bundles, struct list **subs, int current_vers
 		}
 
 	retry_manifest_download:
+		printf("add_subscriptions: load_manifest(): %s %d\n", file->filename, file->is_mix);
 		manifest = load_manifest(current_version, file->last_change, file, mom, true);
 		if (!manifest) {
 			if (retries < MAX_TRIES) {
@@ -469,7 +470,7 @@ static int install_bundles(struct list *bundles, struct list **subs, int current
 	(void)rm_staging_dir_contents("download");
 
 download_subscribed_packs:
-	if (download_subscribed_packs(*subs, true)) {
+	if (download_subscribed_packs(*subs, mom, true)) {
 		if (retries < MAX_TRIES) {
 			increment_retries(&retries, &timeout);
 			printf("Retry #%d downloading subscribed packs\n", retries);
@@ -480,7 +481,7 @@ download_subscribed_packs:
 
 	/* step 3: Add tracked bundles */
 	grabtime_start(&times, "Add tracked bundles");
-	read_subscriptions_alt(subs);
+	read_subscriptions_alt(subs, false);
 	set_subscription_versions(mom, NULL, subs);
 	mom->submanifests = recurse_manifest(mom, *subs, NULL);
 	if (!mom->submanifests) {
@@ -581,7 +582,7 @@ int install_bundles_frontend(char **bundles)
 
 	swupd_curl_set_current_version(current_version);
 
-	mom = load_mom(current_version, false);
+	mom = load_mom(current_version, false, false);
 	if (!mom) {
 		fprintf(stderr, "Cannot load official manifest MoM for version %i\n", current_version);
 		ret = EMOM_NOTFOUND;
@@ -656,3 +657,4 @@ void read_local_bundles(struct list **list_bundles)
 
 	free(path);
 }
+                             
